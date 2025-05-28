@@ -32,7 +32,7 @@ async function main() {
     } catch (err) {
       console.error("Read error:", err.message);
     }
-  }, 1000);
+  }, 500);
 }
 
 main().catch(console.error);

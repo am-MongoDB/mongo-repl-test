@@ -31,4 +31,26 @@ db.createUser({
  })
 
 mongosh "mongodb://billy:fish@mongo1:27017,mongo2:27017,mongo3:27017/?authSource=admin&replicaSet=mongodb-repl-set"
+
+config = rs.conf()
+config.members[1].priority = 10 // mongo2
+cfg.settings.electionTimeoutMillis = 1000;  // Lower to 1 second
+rs.reconfig(config)
+
+
+rs.status().members.map(m => ({
+  name: m.name,
+  stateStr: m.stateStr
+}))
+
+function rsSummary() {
+  return rs.status().members.map(m => ({
+    name: m.name,
+    stateStr: m.stateStr,
+    health: m.health,
+    optime: m.optime.ts
+  }));
+}
+
+rsSummary()
 ```
