@@ -34,7 +34,7 @@ mongosh "mongodb://billy:fish@mongo1:27017,mongo2:27017,mongo3:27017/?authSource
 
 config = rs.conf()
 config.members[1].priority = 10 // mongo2
-cfg.settings.electionTimeoutMillis = 1000;  // Lower to 1 second
+config.settings.electionTimeoutMillis = 1000;  // Lower to 1 second
 rs.reconfig(config)
 
 
@@ -53,4 +53,14 @@ function rsSummary() {
 }
 
 rsSummary()
+
+docker network disconnect mongo-net mongo2
+docker network connect mongo-net mongo2
+
+db.counter.updateOne({}, {$set: {value: 0}})
+
+use local
+db.oplog.rs.find({ns: 'test.counter'}).sort({ts: -1}).limit(1)
+
+docker commit app1 my-mongo-image
 ```
