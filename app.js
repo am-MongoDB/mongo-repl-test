@@ -1,6 +1,10 @@
-const { MongoClient } = require("mongodb");
+const { MongoClient, ReadPreference } = require("mongodb");
 
-const uri = "mongodb://billy:fish@mongo1:27017,mongo2:27017,mongo3:27017/?authSource=admin&replicaSet=mongodb-repl-set";
+// The URI doesn't need to include all nodes in the replica set, so long as 
+// at least one (available node) is included  and the replica set name is 
+// specified then thereplica set will fill in the rest.
+const uri = "mongodb://billy:fish@mongo0:27017,mongo1:27017,mongo2:27017/?authSource=admin&replicaSet=mongodb-repl-set";
+
 const client = new MongoClient(uri);
 
 async function main() {
