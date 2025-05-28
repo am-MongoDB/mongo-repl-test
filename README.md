@@ -8,6 +8,8 @@ docker run -dit --name mongo2 --hostname mongo2 --network mongo-net my-custom-mo
 docker run -dit --name mongo3 --hostname mongo3 --network mongo-net my-custom-mongo bash
 docker run -dit --name app1 --hostname app1 --network mongo-net my-custom-mongo bash
 
+docker exec -it mongo1 bash
+
 rs.initiate(
   {
      _id: "mongodb-repl-set",
