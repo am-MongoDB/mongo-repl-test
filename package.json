@@ -1,0 +1,14 @@
+{
+  "name": "replica-set-tester",
+  "version": "1.0.0",
+  "description": "A Node.js app that tests MongoDB replica set read/write operations.",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "author": "You",
+  "license": "MIT",
+  "dependencies": {
+    "mongodb": "^6.3.0"
+  }
+}
