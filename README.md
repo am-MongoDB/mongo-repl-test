@@ -4,12 +4,15 @@
 docker network create mongo-net
 
 docker run -dit --name analytics --hostname analytics --network mongo-net my-custom-mongo bash
+<!-- docker run -dit --name delayed --hostname delayed --network mongo-net my-custom-mongo bash -->
 docker run -dit --name mongo2 --hostname mongo2 --network mongo-net my-custom-mongo bash
-docker run -dit --name mongo3 --hostname mongo3 --network mongo-net my-custom-mongo bash
+docker run -dit --name 1 --hostname 1 --network mongo-net my-custom-mongo bash
 docker run -dit --name mongo0 --hostname mongo0 --network mongo-net my-custom-mongo bash
 docker run -dit --name app1 --hostname app1 --network mongo-net my-custom-mongo bash
 
 docker exec -it mongo1 bash
+
+mongod --config /etc/mongod.conf&
 
 rs.initiate(
   {
@@ -40,18 +43,11 @@ config.members[1].priority = 10 // mongo2
 config.settings.electionTimeoutMillis = 1000;  // Lower to 1 second
 rs.reconfig(config)
 
-
-rs.status().members.map(m => ({
-  name: m.name,
-  stateStr: m.stateStr
-}))
-
 function rsSummary() {
   return rs.status().members.map(m => ({
     name: m.name,
     stateStr: m.stateStr,
-    health: m.health,
-    optime: m.optime.ts
+    health: m.health
   }));
 }
 
@@ -75,6 +71,17 @@ rs.add({
   hidden: true,
   tags: { role: "analytics" }
 });
+
+<!-- rs.add({
+  host: "delayed:27017",
+  priority: 0,
+  hidden: true,
+  tags: { role: "delayed" },
+  secondaryDelaySecs: 60
+}); -->
+
+rs.remove("analytics:27017");
+rs.remove("delayed:27017");
 
 readPreference: { mode: "secondary", tags: [{ role: "analytics" }] };
 ```
