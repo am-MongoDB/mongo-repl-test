@@ -10,6 +10,8 @@ docker run -dit --name 1 --hostname 1 --network mongo-net my-custom-mongo bash
 docker run -dit --name mongo0 --hostname mongo0 --network mongo-net my-custom-mongo bash
 docker run -dit --name app1 --hostname app1 --network mongo-net my-custom-mongo bash
 
+docker commit mongo0 my-mongo:latest
+
 docker exec -it mongo1 bash
 
 mongod --config /etc/mongod.conf&
