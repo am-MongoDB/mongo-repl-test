@@ -89,4 +89,7 @@ rs.remove("analytics:27017");
 rs.remove("delayed:27017");
 
 readPreference: { mode: "secondary", tags: [{ role: "analytics" }] };
+
+db.collection.getIndexes();
+
 ```
