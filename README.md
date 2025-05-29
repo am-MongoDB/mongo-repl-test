@@ -41,6 +41,7 @@ db.createUser({
  })
 
 mongosh "mongodb://billy:fish@mongo0:27017,mongo1:27017,mongo2:27017/?authSource=admin&replicaSet=mongodb-repl-set"
+mongosh "mongodb://mongo0:27017,mongo1:27017,mongo2:27017/?authSource=admin&replicaSet=mongodb-repl-set"
 
 config = rs.conf()
 config.members[1].priority = 10 // mongo2
