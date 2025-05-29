@@ -14,7 +14,7 @@ docker commit mongo0 my-mongo:latest
 
 docker exec -it mongo1 bash
 
-mongod --dbpath /var/lib/mongodb --noauth
+mongod --dbpath /var/lib/mongodb --noauth --logpath /var/log/mongodb/mongod.log --logappend --replSet mongodb-repl-set&
 
 mongod --config /etc/mongod.conf&
 
