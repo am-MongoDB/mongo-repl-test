@@ -533,6 +533,6 @@ rs.remove("analytics:27017");
 ## (Optional) Save and publish the image based on one of these containers
 
 ```bash
-docker commit app1 andrewmorgan818/mongodb-replication-demo
+docker commit app0 andrewmorgan818/mongodb-replication-demo
 docker push andrewmorgan818/mongodb-replication-demo:latest
 ```
