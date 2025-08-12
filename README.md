@@ -45,7 +45,7 @@ docker pull andrewmorgan818/mongodb-replication-demo
 ```
 3. Install the **Dev Containers** **VS Code** extension
 
-## To be done when there's a new version of the docker image
+## To be done first time or whenever there's a new version of the docker image
 
 ## On-site, before the demo
 1. Start the containers from Docker Desktop
@@ -54,8 +54,7 @@ docker pull andrewmorgan818/mongodb-replication-demo
 docker exec -it mongo0 bash
 docker exec -it mongo1 bash   
 docker exec -it mongo2 bash   
-docker exec -it analytics bash   
-docker exec -it delayed bash   
+docker exec -it analytics bash    
 docker exec -it app0 bash   
 ```
 3. Start the `mongod` process on `mongo0`, `mongo1`, `mongo2`, `analytics`, and `delayed`:
@@ -64,8 +63,11 @@ mongod --config /etc/mongod.conf&
 ```
 4. Connect VS Code to `app0`: 
   - Execute (`command-ctrl-p`) `Dev Containers: Attach to Running Container`:
+  
   ![Dev Containers](images/dev-containers.png)
+  
   - Connect to `app0`:
+  
   ![app0](images/app0.png)
 
 ## Running the HA demo
@@ -417,13 +419,13 @@ docker network connect mongo-net mongo1
 ```
 
 
-4. Add `mongo1` back to the network:
+6. Add `mongo1` back to the network:
 
 ```bash
 docker network connect mongo-net mongo1
 ```
 
-5. Confirm that `mongo1` is reelected to be primary
+7. Confirm that `mongo1` is reelected to be primary
 
 ### Kill (rather than gracefully stoping) the docker container
 1. Kill the `mongo1` container:
@@ -438,41 +440,44 @@ docker kill mongo1
 5. Observe from `mongosh` that `mongo1` rejoins the replica set and is reelected primary
 
 ### Add an analytics node (if not using Atlas)
+1. If not already running, start `mongod` on `analytics`
+2. Add the node to the replica set (from `mongosh`):
 
-
-## (Optional) Save the image based on one of these containers
-docker commit app1 andrewmorgan818/mongodb-replication-demo
-
-
-
-
-
-
-rs.printReplicationInfo()
-
+```js
 rs.add({
   host: "analytics:27017",
   priority: 0,
-  hidden: true,
   tags: { role: "analytics" }
 });
+```
 
-/***
-  rs.add({
-  host: "delayed:27017",
-  priority: 0,
-  hidden: true,
-  tags: { role: "delayed" },
-  secondaryDelaySecs: 60
-}); 
+3. Uncomment the analytics thread in `app.js` and restart the app:
 
-***/
+```js
+const analyticsCol = db.collection("counter", { 
+  readPreference: { mode: "secondary", tags: [{ role: "analytics" }] } });
 
+// Analytics thread
+setInterval(async () => {
+  try {
+    const doc = await analyticsCol.findOne({ _id: "counter" });
+    const now = new Date().toISOString();
+    console.log(`ANALYTICS: [${now}] Current value: ${doc?.value}`);
+  } catch (err) {
+    console.error("Read error:", err.message);
+  }
+}, 5000);
+```
+
+## Remove a node
+1. Remove the analytics node and show that the application continues running:
+
+```js
 rs.remove("analytics:27017");
-rs.remove("delayed:27017");
+```
 
-readPreference: { mode: "secondary", tags: [{ role: "analytics" }] };
-
-db.collection.getIndexes();
-
+## (Optional) Save and publish the image based on one of these containers
+```bash
+docker commit app1 andrewmorgan818/mongodb-replication-demo
+docker push andrewmorgan818/mongodb-replication-demo:latest
 ```
