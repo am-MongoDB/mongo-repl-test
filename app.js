@@ -28,9 +28,10 @@ async function main() {
     }
   }, 1000);
 
+  const readCol = db.collection("counter");
 
   // Reader thread using primaryPreferred
-  const readCol = db.collection("counter", { readPreference: ReadPreference.primaryPreferred });
+  // const readCol = db.collection("counter", { readPreference: ReadPreference.primaryPreferred });
 
   // Reader thread
   setInterval(async () => {
