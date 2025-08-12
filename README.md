@@ -248,35 +248,205 @@ rsSummary()
 ]
 ```
 
+### Show original primary with higher priority is elected back to be primary after failing and restarting
+1. Set `mongo1` to have a higher priority than the other nodes (from `mongosh`), and also reduce the timeout for failover:
 
+```js
 config = rs.conf()
 config.members[1].priority = 10 // mongo2
 config.settings.electionTimeoutMillis = 1000;  // Lower to 1 second
 rs.reconfig(config)
+```
 
-function rsSummary() {
-  const config = rs.config();
-  return rs.status().members.map((m, i) => ({
-    name: m.name,
-    stateStr: m.stateStr,
-    health: m.health,
-    priority: config.members[i].priority
-  }));
-}
+2. Observe that `mongo1` has been elected to primary and now has a higher priority than the other nodes:
 
+```js
 rsSummary()
+[
+  {
+    name: 'mongo0:27017',
+    stateStr: 'SECONDARY',
+    health: 1,
+    priority: 1
+  },
+  {
+    name: 'mongo1:27017',
+    stateStr: 'PRIMARY',
+    health: 1,
+    priority: 10
+  },
+  {
+    name: 'mongo2:27017',
+    stateStr: 'SECONDARY',
+    health: 1,
+    priority: 1
+  }
+]
+```
+3. `kill -9` `mongod` on `mongo1` and notice that the app doesn't pause for as long as before
+4. Restart `mongod` on `mongo1`
+5. From `mongosh`, confirm that `mongo1` has rejoined the replica set and been reelected to primary
 
-# Disconnect and then connect mongo2 to our Docker container
-docker network disconnect mongo-net mongo2
-docker network connect mongo-net mongo2
+```js
+rsSummary()
+[
+  {
+    name: 'mongo0:27017',
+    stateStr: 'SECONDARY',
+    health: 1,
+    priority: 1
+  },
+  {
+    name: 'mongo1:27017',
+    stateStr: 'PRIMARY',
+    health: 1,
+    priority: 10
+  },
+  {
+    name: 'mongo2:27017',
+    stateStr: 'SECONDARY',
+    health: 1,
+    priority: 1
+  }
+]
+```
+6. Set the timeout to 5 seconds:
 
-db.counter.updateOne({}, {$set: {value: 0}})
+```js
+config = rs.conf()
+config.settings.electionTimeoutMillis = 5000;  // Increase to 5 seconds
+rs.reconfig(config)
+```
 
-use local
-db.oplog.rs.find({ns: 'test.counter'}).sort({ts: -1}).limit(1)
+### Change the connection string so that reads aren't delayed when primary fails
+1. Stop the application (`ctrl-c`)
+2. Edit `app.js` to include the `primaryPreferred` read preference:
 
-# Save the image based on this container
-docker commit app1 my-mongo-image
+```js
+const readCol = db.collection("counter", { readPreference: ReadPreference.primaryPreferred });
+```
+3. Restart the application (`npm start`)
+3. `kill -9` the primary `mongod`
+4. Observe that the reads continue, but the counter is not incremented for a few seconds:
+
+```js
+[2025-08-12T11:57:34.583Z] Current value: 2408
+[2025-08-12T11:57:34.867Z] Incremented
+[2025-08-12T11:57:35.083Z] Current value: 2409
+[2025-08-12T11:57:35.587Z] Current value: 2409
+[2025-08-12T11:57:36.095Z] Current value: 2409
+[2025-08-12T11:57:36.601Z] Current value: 2409
+[2025-08-12T11:57:37.104Z] Current value: 2409
+[2025-08-12T11:57:37.604Z] Current value: 2409
+[2025-08-12T11:57:38.107Z] Current value: 2409
+[2025-08-12T11:57:38.610Z] Current value: 2409
+[2025-08-12T11:57:39.115Z] Current value: 2409
+[2025-08-12T11:57:39.615Z] Current value: 2409
+[2025-08-12T11:57:40.116Z] Current value: 2409
+[2025-08-12T11:57:40.619Z] Current value: 2409
+[2025-08-12T11:57:35.869Z] Incremented
+[2025-08-12T11:57:37.877Z] Incremented
+[2025-08-12T11:57:36.872Z] Incremented
+[2025-08-12T11:57:38.881Z] Incremented
+[2025-08-12T11:57:39.882Z] Incremented
+[2025-08-12T11:57:40.886Z] Incremented
+[2025-08-12T11:57:41.120Z] Current value: 2415
+```
+
+5. Restart `mongod` on `mongo1`
+
+## Isolate the primary node from the network
+1. `mongo1` should still be the primary as it has the highest priority; isolate it from the Docker network:
+
+```bash
+docker network disconnect mongo-net mongo1
+```
+
+2. Confirm that `mongo1` is not a functioning member of the replica set:
+
+```js
+rsSummary()
+[
+  { 
+    name: 'mongo0:27017', 
+    stateStr: 'PRIMARY', 
+    health: 1, 
+    priority: 1 
+  },
+  {
+    name: 'mongo1:27017',
+    stateStr: '(not reachable/healthy)',
+    health: 0,
+    priority: 10
+  },
+  {
+    name: 'mongo2:27017',
+    stateStr: 'SECONDARY',
+    health: 1,
+    priority: 1
+  }
+]
+```
+
+3. Try connecting `mongosh` to the replica set with only `mongo1` in the connection string:
+
+```bash
+mongosh "mongodb://mongo1:27017/?authSource=admin&replicaSet=mongodb-repl-set"
+```
+```js
+mongosh "mongodb://mongo1:27017/?authSource=admin&replicaSet=mongodb-repl-set"
+Current Mongosh Log ID:	689b30d9f67c0664e8d2950c
+Connecting to:		mongodb://mongo1:27017/?authSource=admin&replicaSet=mongodb-repl-set&appName=mongosh+2.5.1
+MongoServerSelectionError: getaddrinfo EAI_AGAIN mongo1
+```
+
+4. Connect to `mongo1` using `mongosh` and confirm that it rejects writes:
+
+```bash
+root@mongo1:/# mongosh
+```
+```js
+db.fluff.insertOne({})
+MongoServerError[NotWritablePrimary]: not primary
+````
+
+5. Add `mongo1` back to the network:
+
+```bash
+docker network connect mongo-net mongo1
+```
+
+
+4. Add `mongo1` back to the network:
+
+```bash
+docker network connect mongo-net mongo1
+```
+
+5. Confirm that `mongo1` is reelected to be primary
+
+### Kill (rather than gracefully stoping) the docker container
+1. Kill the `mongo1` container:
+
+```bash
+docker kill mongo1
+```
+
+2. Note from the app output that writes are paused during the failover/election
+3. Restart the container
+4. Restart `mongod`
+5. Observe from `mongosh` that `mongo1` rejoins the replica set and is reelected primary
+
+### Add an analytics node (if not using Atlas)
+
+
+## (Optional) Save the image based on one of these containers
+docker commit app1 andrewmorgan818/mongodb-replication-demo
+
+
+
+
+
 
 rs.printReplicationInfo()
 
