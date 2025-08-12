@@ -2,7 +2,7 @@
 
 ## To be done once
 
-1. Install **Docker Desktop** and request a **Docker** license from the Lumos app store (available via [corp.mongodb.com](https://corp.mongodb.com/))
+1. Install **Docker Desktop** and (for MongoDB employees) request a **Docker** license from the Lumos app store (available via [corp.mongodb.com](https://corp.mongodb.com/))
 1. Install the **Dev Containers** **VS Code** extension
 1. Create the Docker network:
 
