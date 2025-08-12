@@ -16,7 +16,7 @@ docker network create mongo-net
 1. Fetch the latest Docker image:
 
 ```bash
-docker pull andrewmorgan818/mongodb-replication-demo
+docker pull andrewmorgan818/mongodb-replication-demo:latest
 ```
 
 3. Create the containers and connect them to our Docker network
