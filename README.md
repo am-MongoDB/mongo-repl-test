@@ -1,42 +1,5 @@
 # mongo-repl-test
 
-```bash
-# Create network within Docker so that the apps running in the container can communicate with each other via hostname
-docker network create mongo-net
-
-docker run -dit --name analytics --hostname analytics --network mongo-net my-custom-mongo bash
-# docker run -dit --name delayed --hostname delayed --network mongo-net my-custom-mongo bash
-docker run -dit --name mongo2 --hostname mongo2 --network mongo-net my-custom-mongo bash
-docker run -dit --name mongo1 --hostname mongo1 --network mongo-net my-custom-mongo bash
-docker run -dit --name mongo0 --hostname mongo0 --network mongo-net my-custom-mongo bash
-docker run -dit --name app0 --hostname app0 --network mongo-net my-custom-mongo bash
-
-# Create or update the image based on container `mongo0`
-# docker commit mongo0 my-mongo:latest
-docker commit mongo0 andrewmorgan818/mongodb-replication-demo:latest
-docker push andrewmorgan818/mongodb-replication-demo:latest
-
-docker pull andrewmorgan818/mongodb-replication-demo:latest
-
-# mongod --dbpath /var/lib/mongodb --noauth --logpath /var/log/mongodb/mongod.log --logappend --bind_ip 0.0.0.0 --replSet mongodb-repl-set&
-
-mongod --config /etc/mongod.conf&
-
-rs.initiate(
-  {
-     _id: "mongodb-repl-set",
-     version: 1,
-     members: [
-        { _id: 0, host : "mongo0" },
-        { _id: 1, host : "mongo1" },
-        { _id: 2, host : "mongo2" }
-     ]
-  }
-)
-
-use admin
-
-```
 ## To be done once
 
 1. Install **Docker Desktop** and request a **Docker** license from the Lumos app store (available via [corp.mongodb.com](https://corp.mongodb.com/))
@@ -75,6 +38,33 @@ docker exec -it mongo2 bash
 docker exec -it analytics bash    
 docker exec -it app0 bash   
 ```
+
+5. Start `mongod` on each node:
+
+```bash
+mongod --config /etc/mongod.conf&
+```
+
+6. On `mongo0`, initiate the replica set:
+
+```bash
+mongosh
+```
+
+```js
+rs.initiate(
+  {
+     _id: "mongodb-repl-set",
+     version: 1,
+     members: [
+        { _id: 0, host : "mongo0" },
+        { _id: 1, host : "mongo1" },
+        { _id: 2, host : "mongo2" }
+     ]
+  }
+)
+```
+
 ## On-site, before the demo
 
 1. Start the containers from Docker Desktop
