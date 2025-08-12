@@ -39,7 +39,9 @@ docker exec -it analytics bash
 docker exec -it app0 bash   
 ```
 
-5. Start `mongod` on each node:
+- The only thing that should need to change in each config file is that `bindIp: 127.0.0.1,mongoX` should use the node/hostname (one of `mongo0`, `mongo1`, `mongo2`, `analytics`) rather than `mongoX`.
+
+5. Start `mongod` on each node (all containers apart from `app0`):
 
 ```bash
 mongod --config /etc/mongod.conf&
