@@ -38,18 +38,36 @@ use admin
 
 ```
 ## To be done once
+
 1. Install **Docker Desktop** and request a **Docker** license from the Lumos app store (available via [corp.mongodb.com](https://corp.mongodb.com/))
-1. Fetch the latest Docker image:
+1. Install the **Dev Containers** **VS Code** extension
+1. Create the Docker network:
+
 ```bash
-docker pull andrewmorgan818/mongodb-replication-demo
+docker network create mongo-net
 ```
-3. Install the **Dev Containers** **VS Code** extension
 
 ## To be done first time or whenever there's a new version of the docker image
 
-## On-site, before the demo
-1. Start the containers from Docker Desktop
-1. Connect a seperate terminal tab to each of the nodes:
+1. Delete any existing containers and images for this demo
+1. Fetch the latest Docker image:
+
+```bash
+docker pull andrewmorgan818/mongodb-replication-demo
+```
+
+3. Create the containers and connect them to our Docker network
+
+```bash
+docker run -dit --name mongo0 --hostname mongo0 --network mongo-net andrewmorgan818/mongodb-replication-demo bash
+docker run -dit --name mongo1 --hostname mongo1 --network mongo-net andrewmorgan818/mongodb-replication-demo bash
+docker run -dit --name mongo2 --hostname mongo2 --network mongo-net andrewmorgan818/mongodb-replication-demo bash
+docker run -dit --name analytics --hostname analytics --network mongo-net andrewmorgan818/mongodb-replication-demo bash
+docker run -dit --name app0 --hostname app0 --network mongo-net andrewmorgan818/mongodb-replication-demo bash
+```
+
+4. Edit the `/etc/mongod.conf` MongoDB configuration file on each MongoDB node (`mongo0`, `mongo1`, `mongo2`, `analytics`) using the files from this repo (under `mongodb-cfg-files`). Do this by connecting to each node from the terminal:
+
 ```bash
 docker exec -it mongo0 bash
 docker exec -it mongo1 bash   
@@ -57,10 +75,25 @@ docker exec -it mongo2 bash
 docker exec -it analytics bash    
 docker exec -it app0 bash   
 ```
+## On-site, before the demo
+
+1. Start the containers from Docker Desktop
+1. Connect a seperate terminal tab to each of the nodes:
+
+```bash
+docker exec -it mongo0 bash
+docker exec -it mongo1 bash   
+docker exec -it mongo2 bash   
+docker exec -it analytics bash    
+docker exec -it app0 bash   
+```
+
 3. Start the `mongod` process on `mongo0`, `mongo1`, `mongo2`, `analytics`, and `delayed`:
+
 ```bash
 mongod --config /etc/mongod.conf&
 ```
+
 4. Connect VS Code to `app0`: 
   - Execute (`command-ctrl-p`) `Dev Containers: Attach to Running Container`:
   
@@ -96,13 +129,16 @@ rsSummary()
 2. Show the demo app code in `/home/src/mongo-repl-test/app.js`
 3. Run the demo app:
 - From the VS Code terminal:
+
 ```bash
 cd /home/src/mongo-repl-test
 git pull # optional
 npm install # optional
 npm start
 ```
+
 4. Observe the output from the app:
+
 ```bash
 root@app0:/home/src/mongo-repl-test# npm start
 
@@ -120,17 +156,22 @@ root@app0:/home/src/mongo-repl-test# npm start
 [2025-08-12T09:17:02.077Z] Incremented
 ...
 ```
+
 ### Failover when NICELY killing primary process
+
 1. Make the app output visible, and observe the incrementing count
 2. From the terminal for the node that's currently primary:
+
 ```bash
 root@mongo1:/# ps -ef | grep mongod
 root        18     1  1 09:22 ?        00:01:57 mongod --config /etc/mongod.conf
 root       317   152  0 11:22 pts/2    00:00:00 grep mongod
 root@mongo1:/# kill 18
 ```
+
 3. Observe that the output from the app wasn't interrupted
 4. From any node, run rsSummary():
+
 ```js
 Enterprise mongodb-repl-set [primary] test> rsSummary()
 [
@@ -154,13 +195,17 @@ Enterprise mongodb-repl-set [primary] test> rsSummary()
   }
 ]
 ```
+
 5. Note that a new node has taken over as primary
 6. Start `mongod` on that node again: 
+
 ```bash
 mongod --config /etc/mongod.conf&
 ```
+
 7. Observe that the app output wasn't interrupted
 8. Observe that the node has rejoined the cluster:
+
 ```js
 rsSummary()
 [
@@ -186,16 +231,20 @@ rsSummary()
 ```
 
 ### Failover when HARD killing primary process
+
 1. Make the app output visible, and observe the incrementing count
 2. From the terminal for the node that's currently primary:
+
 ```bash
 root@mongo0:/# ps -ef | grep mongod
 root        19    17  1 09:22 pts/1    00:02:14 mongod --config /etc/mongod.conf
 root       348    17  0 11:35 pts/1    00:00:00 grep mongod
 root@mongo0:/# kill -9 19
 ```
+
 3. Observe that the output from the app halts for a few seconds and then continues from where it left off, there are no errors reported by the application
 4. From any node, run rsSummary():
+
 ```js
 rsSummary()
 [
@@ -219,13 +268,17 @@ rsSummary()
   }
 ]
 ```
+
 5. Note that a new node has taken over as primary
 6. Start `mongod` on that node again: 
+
 ```bash
 mongod --config /etc/mongod.conf&
 ```
+
 7. Observe that the app output wasn't interrupted
 8. Observe that the node has rejoined the cluster:
+
 ```js
 rsSummary()
 [
@@ -251,6 +304,7 @@ rsSummary()
 ```
 
 ### Show original primary with higher priority is elected back to be primary after failing and restarting
+
 1. Set `mongo1` to have a higher priority than the other nodes (from `mongosh`), and also reduce the timeout for failover:
 
 ```js
@@ -285,6 +339,7 @@ rsSummary()
   }
 ]
 ```
+
 3. `kill -9` `mongod` on `mongo1` and notice that the app doesn't pause for as long as before
 4. Restart `mongod` on `mongo1`
 5. From `mongosh`, confirm that `mongo1` has rejoined the replica set and been reelected to primary
@@ -312,6 +367,7 @@ rsSummary()
   }
 ]
 ```
+
 6. Set the timeout to 5 seconds:
 
 ```js
@@ -321,15 +377,17 @@ rs.reconfig(config)
 ```
 
 ### Change the connection string so that reads aren't delayed when primary fails
+
 1. Stop the application (`ctrl-c`)
 2. Edit `app.js` to include the `primaryPreferred` read preference:
 
 ```js
 const readCol = db.collection("counter", { readPreference: ReadPreference.primaryPreferred });
 ```
+
 3. Restart the application (`npm start`)
-3. `kill -9` the primary `mongod`
-4. Observe that the reads continue, but the counter is not incremented for a few seconds:
+4. `kill -9` the primary `mongod`
+5. Observe that the reads continue, but the counter is not incremented for a few seconds:
 
 ```js
 [2025-08-12T11:57:34.583Z] Current value: 2408
@@ -355,9 +413,10 @@ const readCol = db.collection("counter", { readPreference: ReadPreference.primar
 [2025-08-12T11:57:41.120Z] Current value: 2415
 ```
 
-5. Restart `mongod` on `mongo1`
+6. Restart `mongod` on `mongo1`
 
 ## Isolate the primary node from the network
+
 1. `mongo1` should still be the primary as it has the highest priority; isolate it from the Docker network:
 
 ```bash
@@ -395,6 +454,7 @@ rsSummary()
 ```bash
 mongosh "mongodb://mongo1:27017/?authSource=admin&replicaSet=mongodb-repl-set"
 ```
+
 ```js
 mongosh "mongodb://mongo1:27017/?authSource=admin&replicaSet=mongodb-repl-set"
 Current Mongosh Log ID:	689b30d9f67c0664e8d2950c
@@ -407,6 +467,7 @@ MongoServerSelectionError: getaddrinfo EAI_AGAIN mongo1
 ```bash
 root@mongo1:/# mongosh
 ```
+
 ```js
 db.fluff.insertOne({})
 MongoServerError[NotWritablePrimary]: not primary
@@ -428,6 +489,7 @@ docker network connect mongo-net mongo1
 7. Confirm that `mongo1` is reelected to be primary
 
 ### Kill (rather than gracefully stoping) the docker container
+
 1. Kill the `mongo1` container:
 
 ```bash
@@ -440,6 +502,7 @@ docker kill mongo1
 5. Observe from `mongosh` that `mongo1` rejoins the replica set and is reelected primary
 
 ### Add an analytics node (if not using Atlas)
+
 1. If not already running, start `mongod` on `analytics`
 2. Add the node to the replica set (from `mongosh`):
 
@@ -470,6 +533,7 @@ setInterval(async () => {
 ```
 
 ## Remove a node
+
 1. Remove the analytics node and show that the application continues running:
 
 ```js
@@ -477,6 +541,7 @@ rs.remove("analytics:27017");
 ```
 
 ## (Optional) Save and publish the image based on one of these containers
+
 ```bash
 docker commit app1 andrewmorgan818/mongodb-replication-demo
 docker push andrewmorgan818/mongodb-replication-demo:latest
