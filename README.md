@@ -301,7 +301,7 @@ rsSummary()
 
 ```js
 config = rs.conf()
-config.members[1].priority = 10 // mongo2
+config.members[1].priority = 10 // mongo1
 config.settings.electionTimeoutMillis = 1000;  // Lower to 1 second
 rs.reconfig(config)
 ```
