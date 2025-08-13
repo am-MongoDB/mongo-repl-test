@@ -23,9 +23,17 @@ docker pull andrewmorgan818/mongodb-replication-demo:latest
 
 ```bash
 docker run -dit --name mongo0 --hostname mongo0 --network mongo-net andrewmorgan818/mongodb-replication-demo bash
+```
+```bash
 docker run -dit --name mongo1 --hostname mongo1 --network mongo-net andrewmorgan818/mongodb-replication-demo bash
+```
+```bash
 docker run -dit --name mongo2 --hostname mongo2 --network mongo-net andrewmorgan818/mongodb-replication-demo bash
+```
+```bash
 docker run -dit --name analytics --hostname analytics --network mongo-net andrewmorgan818/mongodb-replication-demo bash
+```
+```bash
 docker run -dit --name app0 --hostname app0 --network mongo-net andrewmorgan818/mongodb-replication-demo bash
 ```
 
@@ -33,9 +41,17 @@ docker run -dit --name app0 --hostname app0 --network mongo-net andrewmorgan818/
 
 ```bash
 docker exec -it mongo0 bash
+```
+```bash
 docker exec -it mongo1 bash   
+```
+```bash
 docker exec -it mongo2 bash   
+```
+```bash
 docker exec -it analytics bash    
+```
+```bash
 docker exec -it app0 bash   
 ```
 
@@ -74,9 +90,17 @@ rs.initiate(
 
 ```bash
 docker exec -it mongo0 bash
+```
+```bash
 docker exec -it mongo1 bash   
+```
+```bash
 docker exec -it mongo2 bash   
+```
+```bash
 docker exec -it analytics bash    
+```
+```bash
 docker exec -it app0 bash   
 ```
 
@@ -132,8 +156,9 @@ npm start
 4. Observe the output from the app:
 
 ```bash
-root@app0:/home/src/mongo-repl-test# npm start
-
+npm start
+```
+```bash
 > replica-set-tester@1.0.0 start
 > node app.js
 
@@ -158,6 +183,8 @@ root@app0:/home/src/mongo-repl-test# npm start
 root@mongo1:/# ps -ef | grep mongod
 root        18     1  1 09:22 ?        00:01:57 mongod --config /etc/mongod.conf
 root       317   152  0 11:22 pts/2    00:00:00 grep mongod
+```
+```bash
 root@mongo1:/# kill 18
 ```
 
@@ -165,7 +192,9 @@ root@mongo1:/# kill 18
 4. From any node, run rsSummary():
 
 ```js
-Enterprise mongodb-repl-set [primary] test> rsSummary()
+rsSummary()
+```
+```js
 [
   { 
     name: 'mongo0:27017', 
@@ -200,6 +229,8 @@ mongod --config /etc/mongod.conf&
 
 ```js
 rsSummary()
+```
+```js
 [
   { 
     name: 'mongo0:27017', 
@@ -228,10 +259,14 @@ rsSummary()
 2. From the terminal for the node that's currently primary:
 
 ```bash
-root@mongo0:/# ps -ef | grep mongod
+ps -ef | grep mongod
+```
+```bash
 root        19    17  1 09:22 pts/1    00:02:14 mongod --config /etc/mongod.conf
 root       348    17  0 11:35 pts/1    00:00:00 grep mongod
-root@mongo0:/# kill -9 19
+```
+```bash
+kill -9 19
 ```
 
 3. Observe that the output from the app halts for a few seconds and then continues from where it left off, there are no errors reported by the application
@@ -239,6 +274,8 @@ root@mongo0:/# kill -9 19
 
 ```js
 rsSummary()
+```
+```js
 [
   {
     name: 'mongo0:27017',
@@ -273,6 +310,8 @@ mongod --config /etc/mongod.conf&
 
 ```js
 rsSummary()
+```
+```js
 [
   {
     name: 'mongo0:27017',
@@ -310,6 +349,8 @@ rs.reconfig(config)
 
 ```js
 rsSummary()
+```
+```js
 [
   {
     name: 'mongo0:27017',
@@ -338,6 +379,8 @@ rsSummary()
 
 ```js
 rsSummary()
+```
+```js
 [
   {
     name: 'mongo0:27017',
@@ -419,6 +462,8 @@ docker network disconnect mongo-net mongo1
 
 ```js
 rsSummary()
+```
+```js
 [
   { 
     name: 'mongo0:27017', 
@@ -449,28 +494,33 @@ mongosh "mongodb://mongo1:27017/?authSource=admin&replicaSet=mongodb-repl-set"
 
 ```js
 mongosh "mongodb://mongo1:27017/?authSource=admin&replicaSet=mongodb-repl-set"
+```
+```js
 Current Mongosh Log ID:	689b30d9f67c0664e8d2950c
 Connecting to:		mongodb://mongo1:27017/?authSource=admin&replicaSet=mongodb-repl-set&appName=mongosh+2.5.1
 MongoServerSelectionError: getaddrinfo EAI_AGAIN mongo1
 ```
 
-4. Connect to `mongo1` using `mongosh` and confirm that it rejects writes:
+4. Check if the process has been stopped on mongo1:
+
+```js
+ps -ef | grep mongod 
+```
+```js
+root      1726  1636  0 11:21 pts/2    00:00:00 grep mongod
+```
+
+5. If the `mongod` process is still running, connect to `mongo1` using `mongosh` and confirm that it rejects writes:
 
 ```bash
 root@mongo1:/# mongosh
 ```
-
 ```js
 db.fluff.insertOne({})
+```
+```js
 MongoServerError[NotWritablePrimary]: not primary
 ````
-
-5. Add `mongo1` back to the network:
-
-```bash
-docker network connect mongo-net mongo1
-```
-
 
 6. Add `mongo1` back to the network:
 
