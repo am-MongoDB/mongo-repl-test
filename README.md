@@ -59,53 +59,6 @@ docker run -dit \
   --hostname app0 \
   --network mongo-net andrewmorgan818/mongodb-replication-demo bash
 ```
-
-4. Edit the `/etc/mongod.conf` MongoDB configuration file on each MongoDB node (`mongo0`, `mongo1`, `mongo2`, `analytics`) using the files from this repo (under `mongodb-cfg-files`). Do this by connecting to each node from the terminal:
-
-```bash
-docker exec -it mongo0 bash
-```
-```bash
-docker exec -it mongo1 bash   
-```
-```bash
-docker exec -it mongo2 bash   
-```
-```bash
-docker exec -it analytics bash    
-```
-```bash
-docker exec -it app0 bash   
-```
-
-- The only thing that should need to change in each config file is that `bindIp: 127.0.0.1,mongoX` should use the node/hostname (one of `mongo0`, `mongo1`, `mongo2`, `analytics`) rather than `mongoX`.
-
-5. Start `mongod` on each node (all containers apart from `app0`):
-
-```bash
-mongod --config /etc/mongod.conf&
-```
-
-6. On `mongo0`, initiate the replica set:
-
-```bash
-mongosh
-```
-
-```js
-rs.initiate(
-  {
-     _id: "mongodb-repl-set",
-     version: 1,
-     members: [
-        { _id: 0, host : "mongo0" },
-        { _id: 1, host : "mongo1" },
-        { _id: 2, host : "mongo2" }
-     ]
-  }
-)
-```
-
 ## On-site, before the demo
 
 1. Start the containers from Docker Desktop
@@ -127,7 +80,7 @@ docker exec -it analytics bash
 docker exec -it app0 bash   
 ```
 
-3. Start the `mongod` process on `mongo0`, `mongo1`, `mongo2`, `analytics`, and `delayed`:
+3. Start the `mongod` process on `mongo0`, `mongo1`, `mongo2`, and `analytics`:
 
 ```bash
 mongod --config /etc/mongod.conf&
@@ -145,7 +98,29 @@ mongod --config /etc/mongod.conf&
 ## Running the HA demo
 ### Setting the scene
 
-1. From any node, connect the mongo shell (`mongosh`) and confirm that the replica set is up and running:
+1. On `mongo0`, initiate the replica set:
+
+```bash
+mongosh
+```
+
+```js
+rs.initiate(
+  {
+     _id: "mongodb-repl-set",
+     version: 1,
+     members: [
+        { _id: 0, host : "mongo0" },
+        { _id: 1, host : "mongo1" },
+        { _id: 2, host : "mongo2" }
+     ]
+  }
+)
+
+quit
+```
+
+1. Confirm that the replica set is up and running:
 
 ```bash
 mongosh "mongodb://mongo0:27017,mongo1:27017,mongo2:27017/?authSource=admin&replicaSet=mongodb-repl-set"
@@ -165,8 +140,8 @@ function rsSummary() {
 rsSummary()
 ```
 
-2. Show the demo app code in `/home/src/mongo-repl-test/app.js`
-3. Run the demo app:
+1. Show the demo app code in `/home/src/mongo-repl-test/app.js`
+1. Run the demo app:
 - From the VS Code terminal:
 
 ```bash
@@ -176,7 +151,7 @@ npm install # optional
 npm start
 ```
 
-4. Observe the output from the app:
+5. Observe the output from the app:
 
 ```bash
 npm start
