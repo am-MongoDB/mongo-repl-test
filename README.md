@@ -26,7 +26,6 @@ docker run -dit \
   --name mongo0 \
   --hostname mongo0 \
   --network mongo-net \
-  -p 27017:27017 \
   andrewmorgan818/mongodb-replication-demo bash
 ```
 ```bash
@@ -34,7 +33,6 @@ docker run -dit \
   --name mongo1 \
   --hostname mongo1 \
   --network mongo-net \
-  -p 27018:27017 \
   andrewmorgan818/mongodb-replication-demo bash
 ```
 ```bash
@@ -42,7 +40,6 @@ docker run -dit \
   --name mongo2 \
   --hostname mongo2 \
   --network mongo-net \
-  -p 27019:27017 \
   andrewmorgan818/mongodb-replication-demo bash
 ```
 ```bash
@@ -50,7 +47,6 @@ docker run -dit \
   --name analytics \
   --hostname analytics \
   --network mongo-net \
-  -p 27020:27017 \
   andrewmorgan818/mongodb-replication-demo bash
 ```
 ```bash
