@@ -54,7 +54,10 @@ docker run -dit \
   andrewmorgan818/mongodb-replication-demo bash
 ```
 ```bash
-docker run -dit --name app0 --hostname app0 --network mongo-net andrewmorgan818/mongodb-replication-demo bash
+docker run -dit \
+  --name app0 \
+  --hostname app0 \
+  --network mongo-net andrewmorgan818/mongodb-replication-demo bash
 ```
 
 4. Edit the `/etc/mongod.conf` MongoDB configuration file on each MongoDB node (`mongo0`, `mongo1`, `mongo2`, `analytics`) using the files from this repo (under `mongodb-cfg-files`). Do this by connecting to each node from the terminal:
