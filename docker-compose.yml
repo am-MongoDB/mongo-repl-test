@@ -1,0 +1,140 @@
+services:
+  mongo0:
+    image: andrewmorgan818/mongodb-replication-demo:latest
+    container_name: mongo0
+    hostname: mongo0
+    volumes:
+      - ./scripts:/scripts:ro
+    networks:
+      - mongo-net
+    environment:
+      - MONGODB_URI=mongodb://mongo0:27017,mongo1:27017,mongo2:27017/?replicaSet=mongodb-repl-set
+    stdin_open: true
+    tty: true
+    init: true
+    ports: ["27000:27017"]
+    command: ["bash"]
+    post_start:
+      - command: >
+          bash -c 'mongod --config /etc/mongod.conf --fork'
+    # depends_on:
+    #   mongo1:
+    #     condition: service_healthy
+    #   mongo2:
+    #     condition: service_healthy
+    # post_start:
+    #   - command: >
+    #       bash -c '
+    #       mongosh --file /scripts/init-rs.js > init-rs.log 2>&1
+    #       '
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval 'db.runCommand({ ping: 1 })' || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    restart: no
+
+  mongo1:
+    image: andrewmorgan818/mongodb-replication-demo:latest
+    container_name: mongo1
+    hostname: mongo1
+    volumes:
+      - ./scripts:/scripts:ro
+    networks:
+      - mongo-net
+    environment:
+      - MONGODB_URI=mongodb://mongo0:27017,mongo1:27017,mongo2:27017/?replicaSet=mongodb-repl-set
+    stdin_open: true
+    tty: true
+    init: true
+    ports: ["27001:27017"]
+    command: ["bash"]
+    post_start:
+      - command: >
+          bash -c 'mongod --config /etc/mongod.conf --fork'
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval 'db.runCommand({ ping: 1 })' || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    restart: no
+
+  mongo2:
+    image: andrewmorgan818/mongodb-replication-demo:latest
+    container_name: mongo2
+    hostname: mongo2
+    volumes:
+      - ./scripts:/scripts:ro
+    networks:
+      - mongo-net
+    environment:
+      - MONGODB_URI=mongodb://mongo0:27017,mongo1:27017,mongo2:27017/?replicaSet=mongodb-repl-set
+    stdin_open: true
+    tty: true
+    init: true
+    ports: ["27002:27017"]
+    command: ["bash"]
+    post_start:
+      - command: >
+          bash -c 'mongod --config /etc/mongod.conf --fork'
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval 'db.runCommand({ ping: 1 })' || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    restart: no
+
+  analytics:
+    image: andrewmorgan818/mongodb-replication-demo:latest
+    container_name: analytics
+    hostname: analytics
+    volumes:
+      - ./scripts:/scripts:ro
+    networks:
+      - mongo-net
+    environment:
+      - MONGODB_URI=mongodb://mongo0:27017,mongo1:27017,mongo2:27017/?replicaSet=mongodb-repl-set
+    stdin_open: true
+    tty: true
+    init: true
+    ports: ["27003:27017"]
+    command: ["bash"]
+    post_start:
+      - command: >
+          bash -c 'mongod --config /etc/mongod.conf --fork'
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval 'db.runCommand({ ping: 1 })' || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    restart: no
+
+  app0:
+    image: andrewmorgan818/mongodb-replication-demo:latest
+    container_name: app0
+    hostname: app0
+    networks:
+      - mongo-net
+    stdin_open: true
+    tty: true
+    working_dir: /home/src/mongo-repl-test
+    command: >
+      bash -c "git pull --quiet && npm install --no-fund > /dev/null 2>&1 && tail -f /dev/null"
+    depends_on:
+      mongo0:
+        condition: service_healthy
+      mongo1:
+        condition: service_healthy
+      mongo2:
+        condition: service_healthy
+      analytics:
+        condition: service_healthy
+    restart: no
+
+networks:
+  mongo-net:
+    name: mongo-net
