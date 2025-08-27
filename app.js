@@ -7,8 +7,8 @@ const { MongoClient, ReadPreference } = require("mongodb");
 // at least one (available node) is included  and the replica set name is
 // specified then thereplica set will fill in the rest.
 //
-// // DEMO 4
 const uri = "mongodb://mongo0:27017,mongo1:27017,mongo2:27017/?authSource=admin&replicaSet=mongodb-repl-set";
+// // DEMO 4
 // const uri = "mongodb://mongo0:27017,mongo1:27017,mongo2:27017/?authSource=admin&replicaSet=mongodb-repl-set&readPreference=primaryPreferred";
 //
 // ////////////////////////////////////////////////////////////////////////////
@@ -43,8 +43,8 @@ async function main() {
 
   // //////////////////////////////////////////////////////////////////////////
   // // DEMO 4
-  const readCol = db.collection("counter");
-  // const readCol = db.collection("counter", { readPreference: ReadPreference.primaryPreferred });
+  // const readCol = db.collection("counter");
+  const readCol = db.collection("counter", { readPreference: ReadPreference.primaryPreferred });
 
 
   // //////////////////////////////////////////////////////////////////////////
@@ -59,9 +59,8 @@ async function main() {
     }
   }, 500);
 
-
   // //////////////////////////////////////////////////////////////////////////
-  // // DEMO <???>
+  // // DEMO 7
   // const analyticsCol = db.collection("counter", {
   //   readPreference: { mode: "secondary", tags: [{ role: "analytics" }] } });
   // // Analytics thread

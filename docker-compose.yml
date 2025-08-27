@@ -117,6 +117,8 @@ services:
     image: andrewmorgan818/mongodb-replication-demo:latest
     container_name: app0
     hostname: app0
+    volumes:
+      - ./app.js:/home/src/mongo-repl-test/app.js:ro
     networks:
       - mongo-net
     stdin_open: true

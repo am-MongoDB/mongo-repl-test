@@ -2,17 +2,6 @@
 
 These scenarios highlight the different ways a MongoDB replica set can be stressed or reconfigured to demonstrate its high-availability behavior. You can see how the cluster responds when the primary is killed abruptly, how election rules allow a higher-priority node to regain leadership, and how using the `primaryPreferred` read preference keeps queries flowing during failover. Network isolation and container termination tests simulate real outages, while adding an analytics node or removing a member shows how the replica set can adapt to changing workloads. Together, they provide a practical tour of resilience, election dynamics, and scaling options.
 
-Available demos:
-
-- [Failover when NICELY killing primary process](#failover-when-nicely-killing-primary-process)
-- [Failover when HARD killing primary process](#failover-when-hard-killing-primary-process)
-- [Higher Priority Node becomes Primary](#show-original-primary-with-higher-priority-is-elected-back-to-be-primary-after-failing-and-restarting)
-- [Use `primaryPreferred` Read Preference](#change-the-connection-string-so-that-reads-arent-delayed-when-primary-fails)
-- [Isolate the primary node from the network](#isolate-the-primary-node-from-the-network)
-- [Kill the docker container](#kill-rather-than-gracefully-stoping-the-docker-container)
-- [Add an analytics node (if not using Atlas)](#add-an-analytics-node-if-not-using-atlas)
-- [Remove a node](#remove-a-node)
-
 ## 1. Prequisites
 
 - Install **Docker Desktop**. For MongoDB employees, request a **Docker** license from the Lumos app via [corp.mongodb.com](https://corp.mongodb.com/).
@@ -233,10 +222,13 @@ Note: The `primaryPreferred` option can be set at the connection string/driver l
 
 - Restart the application  `docker compose exec app0 bash -c "npm start"`
 - Kill the `primary` `docker compose exec ${P10_NODE} pkill -9 mongod`
-- Observe that the reads continue, but the counter is not incremented for a few seconds:
+- Observe that the reads continue, but the counter is not incremented for a few seconds.
+- Verify `P10_NODE` is unreachable.
+  ```bash
+   $ RUNNING_NODE=mongo0
+   $ docker compose exec ${RUNNING_NODE} mongosh --file scripts/summary.js
 - Restart mongod `docker compose exec ${P10_NODE} mongod --config /etc/mongod.conf --fork`
 </details>
-
 
 #### DEMO 5: Isolate the `primary` node from the network
 
@@ -245,57 +237,54 @@ Network isolation simulates a partition, triggering the remaining members to ele
 <details>
 <summary>🎬🎬🎬 Click to expand the section and see the commands. </summary>
 
-- `P10_NODE` should still be the `primary` as it has the highest priority; isolate it from the Docker network:
+- `P10_NODE` should still be the `primary` as it has the highest priority; isolate it from the Docker network
 
   ```bash
   docker network disconnect mongo-net ${P10_NODE}
   ```
 
-- Confirm `P10_NODE` is not a functioning member of the replica set:
+  You may spot a `Increment error: connect ECONNREFUSED 127.0.0.1:27017` Error on the app, that's expected.
+
+- Confirm `P10_NODE` is not a functioning member of the replica set
 
   ```bash
-  docker compose exec ${P10_NODE} mongosh --file scripts/summary.js
-
-  RUNNING_NODE=mongo0 # update accordingly
-  docker compose exec ${RUNNING_NODE} mongosh --file scripts/summary.js
+  $ RUNNING_NODE=mongo0 # update accordingly
+  $ docker compose exec ${RUNNING_NODE} mongosh --file scripts/summary.js
+  $ docker compose exec ${P10_NODE} mongosh --file scripts/summary.js
   ```
 
-- Try connecting `mongosh` to the replica set with only `mongo1` in the connection string:
+- Confirm writes are rejected on `P10_NODE`
 
   ```bash
-  mongosh "mongodb://mongo1:27017/?authSource=admin&replicaSet=mongodb-repl-set"
-  ```
-
-- Check if the process has been stopped on `P10_NODE`:
-
-  ```js
-  ps -ef | grep mongod
-  ```
-
-- If the `mongod` process is still running, connect to `P10_NODE` using `mongosh` and confirm that it rejects writes:
-
-  ```bash
-  root@mongo1:/# mongosh
-  db.fluff.insertOne({})
+  $ docker compose exec ${P10_NODE} mongosh --eval "db.fluff.insertOne({})"
+  MongoServerError: not primary
   ```
 
 - Add `P10_NODE` back to the network `docker network connect mongo-net ${P10_NODE}`
 - Confirm `P10_NODE` is reelected to be `primary`
 
+  ```bash
+  docker compose exec ${P10_NODE} mongosh --file scripts/summary.js
+  ```
+
 </details>
 
 #### DEMO 6: Kill the docker container
 
-Force-killing a MongoDB container simulates a crash, causing failover and re-election. The application may see a short write pause before resuming.
+Force-killing the `primary` MongoDB container simulates a crash, causing failover and re-election. The application may see a short write pause before resuming.
 
 <details>
 <summary>🎬🎬🎬 Click to expand the section and see the commands. </summary>
 
-- Kill the `P10_NODE` container `docker kill $P10_NODE`
-- Note from the app output that writes are paused during the failover/election
-- Restart the container
-- Restart `mongod`
-- Observe from `mongosh` that `P10_NODE` rejoins the replica set and is reelected primary
+- Kill the `P10_NODE` container `docker compose kill ${P10_NODE}`
+- Note from the app output that writes are paused during the failover/election.
+- Restart the container `docker compose restart ${P10_NODE}`
+- Restart mongod `docker compose exec ${P10_NODE} mongod --config /etc/mongod.conf --fork`
+- Observe that `P10_NODE` rejoins the replica set && is reelected primary
+
+  ```bash
+  $ docker compose exec ${P10_NODE} mongosh --file scripts/summary.js
+  ```
 
 </details>
 
@@ -306,34 +295,20 @@ Adding an analytics node with `priority 0` and role tags routes reporting or BI 
 <details>
 <summary>🎬🎬🎬 Click to expand the section and see the commands. </summary>
 
-1. If not already running, start `mongod` on `analytics`
-2. Add the node to the replica set (from `mongosh`):
+- Add the `analytics` node to the replica set
 
-```js
-rs.add({
-  host: "analytics:27017",
-  priority: 0,
-  tags: { role: "analytics" }
-});
-```
+  ```bash
+  $ docker compose exec ${P10_NODE} mongosh ${MONGODB_URI} --quiet
+    rs.add({
+      host: "analytics:27017",
+      priority: 0, // can never be primary
+      tags: { role: "analytics" }
+    });
+  $ exit
+  ```
 
-3. Uncomment the analytics thread in `app.js` and restart the app:
-
-```js
-const analyticsCol = db.collection("counter", {
-  readPreference: { mode: "secondary", tags: [{ role: "analytics" }] } });
-
-// Analytics thread
-setInterval(async () => {
-  try {
-    const doc = await analyticsCol.findOne({ _id: "counter" });
-    const now = new Date().toISOString();
-    console.log(`ANALYTICS: [${now}] Current value: ${doc?.value}`);
-  } catch (err) {
-    console.error("Read error:", err.message);
-  }
-}, 5000);
-```
+- Uncomment the analytics thread code (DEMO 7) in [`app.js`](/app.js)
+- Restart the app
 
 </details>
 
@@ -342,16 +317,16 @@ setInterval(async () => {
 Removing a member reduces fault tolerance but keeps the replica set functional if a majority remains. It’s useful for scaling down or node maintenance.
 
 <details>
-<summary>🎬🎬🎬 Click to expand the section and see the commands. </summary>
-  ```js
-  docker compose exec mongo0
-  mongosh ${MONGODB_URI}
+<summary>🎬🎬🎬 Click to expand the section and see the commands. </summary>\
+
+  ```bash
+  $ docker compose exec mongo0
+  $ mongosh ${MONGODB_URI}
     rs.remove("analytics:27017");
-  exit
+  $ exit
   ```
+
 </details>
-
-
 
 ## 2. Docker (Alternative)
 
