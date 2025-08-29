@@ -5,7 +5,6 @@ These scenarios highlight the different ways a MongoDB replica set can be stress
 ## 1. Prequisites
 
 - Install **Docker Desktop**. For MongoDB employees, request a **Docker** license from the Lumos app via [corp.mongodb.com](https://corp.mongodb.com/).
-- Install the **Dev Containers VS Code** extension
 
 ##  2. Docker Compose (Recommended)
 
@@ -32,7 +31,8 @@ $ mongosh --file /scripts/summary.js
 exit
 ```
 
-Open and review the application code in the [app.js](./app.js) file.
+Open and review the application code in the [app.js](./app.js) file. Explain the nature of the app. Ensure to cover the MongoClient, the read and write queries.
+
 
 In **another** terminal, start the application process:
 
@@ -47,6 +47,8 @@ $ docker compose exec app0 bash -c "npm start"
 [2025-08-27T14:51:24.018Z] Current value: 604
 [2025-08-27T14:51:24.515Z] Current value: 604
 ```
+
+Note, you'll come back and monitor the app terminal as you complete various demos.
 
 ### 2b. Run each demo
 
@@ -187,9 +189,11 @@ By setting replica set priorities, a designated node can reclaim the `primary` r
   ```bash
   # (terminal 1)
   $ docker compose exec ${P10_NODE} bash
+
   $ mongod --config /etc/mongod.conf --replSet mongodb-repl-set --fork
+
+
   # observe the node has rejoined the cluster as `primary`
-  $ mongosh --file scripts/summary.js
   ```
 
 - Set `electionTimeoutMillis` to 5 seconds:
@@ -206,7 +210,7 @@ By setting replica set priorities, a designated node can reclaim the `primary` r
 
 #### DEMO 4: Change the query options so that reads aren't delayed when the `primary` fails
 
-In this demo we'll use a `primaryPreferred` Read Preference. With `primaryPreferred`, reads can fall back to secondaries during `primary` downtime. This keeps queries flowing even if writes are briefly blocked.
+In this demo we'll use a `primaryPreferred` [Read Preference](https://www.mongodb.com/docs/manual/core/read-preference/). With `primaryPreferred`, reads can fall back to secondaries during `primary` downtime. This keeps queries flowing even if writes are briefly blocked.
 
 Note: The `primaryPreferred` option can be set at the connection string/driver level or on a per-query basis.
 
@@ -217,7 +221,7 @@ Note: The `primaryPreferred` option can be set at the connection string/driver l
 - Edit [`app.js`](app.js) to include the `primaryPreferred` read preference:
 
   ```js
-  const readCol = db.collection("counter", { readPreference: ReadPreference.primaryPreferred });
+  const col = db.collection("counter", { readPreference: ReadPreference.primaryPreferred });
   ```
 
 - Restart the application  `docker compose exec app0 bash -c "npm start"`
@@ -245,7 +249,7 @@ Network isolation simulates a partition, triggering the remaining members to ele
 
   You may spot a `Increment error: connect ECONNREFUSED 127.0.0.1:27017` Error on the app, that's expected.
 
-- Confirm `P10_NODE` is not a functioning member of the replica set
+- Confirm `P10_NODE` is not a functioning member of the replica set. It may take up to `electionTimeoutMillis` to see this change.
 
   ```bash
   $ RUNNING_NODE=mongo0 # update accordingly
