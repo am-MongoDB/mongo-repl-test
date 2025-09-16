@@ -7,7 +7,7 @@
 1. Create the Docker network:
 
 ```bash
-docker network create mongo-net
+docker network create mongo-repl-net
 ```
 
 ## To be done first time or whenever there's a new version of the docker image
@@ -16,7 +16,7 @@ docker network create mongo-net
 1. Fetch the latest Docker image:
 
 ```bash
-docker pull andrewmorgan818/mongodb-replication-demo:latest
+docker pull andrewmorgan818/mongodb-repl-custom:latest
 ```
 
 3. Create the containers and connect them to our Docker network
@@ -25,39 +25,39 @@ docker pull andrewmorgan818/mongodb-replication-demo:latest
 docker run -dit \
   --name mongo0 \
   --hostname mongo0 \
-  --network mongo-net \
-  andrewmorgan818/mongodb-replication-demo bash
+  --network mongo-repl-net \
+  andrewmorgan818/mongodb-repl-custom bash
 ```
 ```bash
 docker run -dit \
   --name mongo1 \
   --hostname mongo1 \
-  --network mongo-net \
-  andrewmorgan818/mongodb-replication-demo bash
+  --network mongo-repl-net \
+  andrewmorgan818/mongodb-repl-custom bash
 ```
 ```bash
 docker run -dit \
   --name mongo2 \
   --hostname mongo2 \
-  --network mongo-net \
-  andrewmorgan818/mongodb-replication-demo bash
+  --network mongo-repl-net \
+  andrewmorgan818/mongodb-repl-custom bash
 ```
 ```bash
 docker run -dit \
   --name analytics \
   --hostname analytics \
-  --network mongo-net \
-  andrewmorgan818/mongodb-replication-demo bash
+  --network mongo-repl-net \
+  andrewmorgan818/mongodb-repl-custom bash
 ```
 ```bash
 docker run -dit \
   --name app0 \
   --hostname app0 \
-  --network mongo-net andrewmorgan818/mongodb-replication-demo bash
+  --network mongo-repl-net andrewmorgan818/mongodb-repl-custom bash
 ```
 ## On-site, before the demo
 
-1. Start the containers from Docker Desktop
+1. Start the containers from Docker Desktop (if not already running)
 1. Connect a seperate terminal tab to each of the nodes:
 
 ```bash
@@ -141,9 +141,9 @@ rsSummary()
 - From the VS Code terminal:
 
 ```bash
-cd /home/src/mongo-repl-test
+cd mongo-repl-test
 git pull # optional
-npm install # optional
+npm install
 npm start
 ```
 
@@ -449,7 +449,7 @@ const readCol = db.collection("counter", { readPreference: ReadPreference.primar
 1. `mongo1` should still be the primary as it has the highest priority; isolate it from the Docker network:
 
 ```bash
-docker network disconnect mongo-net mongo1
+docker network disconnect mongo-repl-net mongo1
 ```
 
 2. Confirm that `mongo1` is not a functioning member of the replica set:
@@ -519,7 +519,7 @@ MongoServerError[NotWritablePrimary]: not primary
 6. Add `mongo1` back to the network:
 
 ```bash
-docker network connect mongo-net mongo1
+docker network connect mongo-repl-net mongo1
 ```
 
 7. Confirm that `mongo1` is reelected to be primary
@@ -579,6 +579,51 @@ rs.remove("analytics:27017");
 ## (Optional) Save and publish the image based on one of these containers
 
 ```bash
-docker commit app0 andrewmorgan818/mongodb-replication-demo
-docker push andrewmorgan818/mongodb-replication-demo:latest
+docker commit app0 andrewmorgan818/mongodb-repl-custom
+docker push andrewmorgan818/mongodb-repl-custom:latest
+```
+## Building and publishing Docker image
+
+```bash
+git clone git@github.com:am-MongoDB/mongo-repl-test.git
+```
+
+### For local architecture
+
+```bash
+docker build -t andrewmorgan818/mongodb-repl-custom:dev .
+docker run --rm -it andrewmorgan818/mongodb-repl-custom:dev
+```
+
+### For multi-architecture images
+#### Set up buildx if not already done
+
+```bash
+docker buildx create --name multiarch --use
+docker buildx inspect --bootstrap
+```
+
+#### Login to docker
+
+```bash
+docker login
+```
+#### Build and push multi-arch images
+
+```bash
+docker buildx build \
+  --platform linux/amd64,linux/arm64 \
+  -t andrewmorgan818/mongodb-repl-custom:latest \
+  -t andrewmorgan818/mongodb-repl-custom:8.0 \
+  --push .
+```
+
+## Re-build and publish image
+
+```bash
+docker buildx build \
+  --platform linux/amd64,linux/arm64 \
+  -t andrewmorgan818/mongodb-repl-custom:latest \
+  -t andrewmorgan818/mongodb-repl-custom:8.0 \
+  --push .
 ```
